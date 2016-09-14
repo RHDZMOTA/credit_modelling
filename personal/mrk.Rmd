@@ -16,9 +16,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 En el presente documento se publican las tasas de interés propuestas para otorgar / solicitar préstamos entre familiares y conocidos de confianza. 
 
+Este documento es válido para todos los préstamos solicitados durante el mes de **Septiembre**. 
+
 ### Especificaciones
 
-Se deberá acordar el monto del préstamo, la tasa de interés y el plazo. Habiendo establecido estas variables, se recomienda fuertemente firmar un pagaré para dar formalidad al préstamo. Este pagaré, como todo título de crédito, se puede endosar según sea la conveniencia del beneficiaro. 
+Se deberá acordar el monto del préstamo, la tasa de interés y el plazo; sujeto a disponibilidad. Habiendo establecido tales variables, se deberá firmar un pagaré con la información acordada. 
+
+El pagaré deberá contener los requisitos oficiales que validan su legitimidad y por lo tanto estar regulado bajo la _Ley General de Títulos de Crédito_. 
 
 Por simplicidad, se sugiere pagar el pagaré a su vencimiento. En caso de realizar un pago (o pagos) anteriores al fecha límite estipulada, se deberán descontar estos pagos al capital e intereses correspondientes siguendo las reglas de las Matemáticas Financieras. 
 
@@ -29,79 +33,12 @@ library(tibble)
 library(tidyr)
 library(ggplot2)
 
-# Functions  --------------------------------------------------------------
+# Working Directory for Windows...
+setwd("~/credit_modelling/personal")
+# Working Directory for Linux (Porteus)...
+# setwd("~/credit_modelling/personal")
 
-# Functions to calculate:
-# - future_value
-# - present_value
-# - interest_rate 
-
-future_value <- function(M, i, n){
-  # desc.
-  # This function returns the future value of an investment given the 
-  # annual interest rate, the initial capital and the # of months. 
-  # 
-  # I N P U T S:
-  # * M: initial capital
-  # * i: annual interest rate with monthly capitalization
-  # * n: number of months required
-  # 
-  # O U T P U T S:
-  # * FN: final/future value of capital M given the time and interest. 
-  
-  FN <- M * (1 + i/12) ^ n
-  
-  return(FN)
-}
-
-present_value <- function(FN, i, n){
-  # desc. 
-  # This function returns the present value of an investment given the
-  # annual interest rate, the final caputal and the # of months. 
-  # 
-  # I N P U T S:
-  # * FN: final/future expected value of capital M
-  # * i: annual interest rate with monthly capitalization
-  # * n: number of months required
-  # 
-  # O U T P U T S:
-  # * M: initial capital required to fullfil the... 
-  
-  M <- Fn * (1 + i/12) ^ (-n)
-  
-  return(M)
-}
-
-interest_rate <- function(M, FN, n){
-  # desc. 
-  # This function returns the annual interest rate with monthly
-  # capitalization of an investment of initial capital M in n months
-  # to return a final capital FN. 
-  # ...
-  
-  i <- (FN / M) ^ (1/n) - 1
-  i <- 12 * i
-  
-  return(i)
-}
-
-eq_intrate <- function(init, cap){
-  # desc. 
-  # This function returns the equivalent annual interest rate with monthly
-  # capitalization of a given initial annual interest rate with arbitrary
-  # capitalization. 
-  # 
-  # I N P U T S:
-  # * init = annual interest rate with arbitrary capitalization. 
-  # * cap = number of capitalizations per year (e.g. daily capitalization is cap = 360)
-  # 
-  # O U T P U T S:
-  
-  i <- 12 * ( (1 + init / cap) ^ (cap / 12) - 1 )
-  
-  return(i)
-}
-
+source('finmfun.R')
 # Main program ------------------------------------------------------------
 
 main <- function(){
@@ -140,11 +77,9 @@ table <- main()
 
 ## Requerimientos de capital
 
-[ agregar ]
+Por conveniencia se proponen las siguentes _clasificaciones del capital_ según rangos arbitrarios. 
 
-Para determinar la tasa de interés, es necesario conocer en qué _clasificación_ se encuentra el capital solicitado para préstamo;
-
-
+En la siguente sección se establece una relación entre la clasificación del capital solicitado y la tasa de interés del préstamo. 
 
 \[
  \begin{matrix}
@@ -156,8 +91,6 @@ Para determinar la tasa de interés, es necesario conocer en qué _clasificación_ 
 \]
 
 
-[ especificar ]
-
 ## Tasas de interés
 
 ### Inversionista racional 
@@ -165,73 +98,62 @@ Para determinar la tasa de interés, es necesario conocer en qué _clasificación_ 
 Los siguentes comportamientos pueden esperarse de un inversionista racional: 
 
 $\Delta i > 0 \to \Delta k > 0$
-Esto significa que dado un cambio positivo en la tasa de interés, in inversionista aumentará el monto $k$ que tiene en inversión. 
+Esto significa que dado un cambio positivo en la tasa de interés, un inversionista aumentará el monto $k$ que tiene en inversión. 
 
 $\Delta i > 0 \to \Delta t > 0$
-Un aumento en la tasa de interés genera un cambio proporcional en la duración de la inversión. 
+Un aumento en la tasa de interés genera un cambio proporcional en la duración de la inversión / préstamo. 
 
 Dados estos comportamientos, se propone el siguiente modelo para determinar la tasa de interés:
+
 $$ i = j * (1 + r) $$
 
-En donde $i$ es la tasa de interés anual con capitalización mensual, $j$ es el componente temporal y $0<r<1$ es la magnitúd atemporal.
+En donde $i$ es la tasa de interés anual con capitalización mensual, $j$ es el componente temporal y $0<r<1$ es la magnitúd atemporal (penalización por capital).
 
 ### Componente temporal 
-En la sección anterior se comentó que la tasa de interés tiene una relación proporcional directa con el tiempo (duración) de la inversión. Por lo tanto, se propone el componente temporal de la siguiente forma:
+En la sección anterior se identificó una relación proporcional directa entre la tasa de interés y el tiempo (duración) de la inversión. Por lo tanto, se propone el componente temporal de la siguiente forma:
 
 $$ j = a e ^ { b t } + c$$
 
-Condicionado a $j(1)=7$, $j(6)=12$, $j(12)=15$ en donde ${a,b,c} \in Re$. 
+Condicionado a $j(1)=7$, $j(8)=12$, $j(12)=18$ en donde ${a,b,c} \in Re$. 
 
-Tomando en cuenta los valores y resolviendo se tiene como resultado:
+Los valores arbitrarios $j(a)$ en donde $a$ representa el número de meses (duración) del crédito y $j$ es la tasa de interés (sin contemplar la "penalización de capital") son definidos en relación a la tasa de interés de referencia y adecuado al perfil del solicitante. 
+
+Tomando en cuenta los valores y resolviendo el sistema de ecuaciones no lineal se tiene como resultado:
 
 \[
  \begin{matrix}
-  a = -12.0567 \\
-  b = -0.127368 \\
-  c = 17.6149 \\
+  a = 2.62023 \\
+  b = 0.139728 \\
+  c = 3.98684 \\
  \end{matrix}
 \]
 
-Reescribiendo en el componente temporal:
+Sustituyendo en el componente temporal:
 
-$$ j = -12.0567 e ^ { -0.127368 t } + 17.6149 $$
+$$ j = 2.62023 e ^ { 0.139728 t } + 3.98684 $$
 
 ### Penalización de capital
 Por cada $1000 del capital solicitado, la tasa aumentará 1 punto base. 
 
 $$(1+r)=(1+k/10^5)$$
 
-En dónde $k$ es el capital. 
+En dónde $k$ es el capital. El objetivo de este factor es incentivar la solicitud de crédito para los rangos/clasificaciones más bajas de capital. En este sentido, para un fondo de recursos constante se tiene preferencia otorgar $n$ número de créditos de monto bajo a un mayor número de solicitantes que $m$ solicitudes de crédito de alto monto a un menor número de solictantes (motivo de diversificación). 
 
 ### Tasa de interés
 
 Por lo tanto, la tasa de interés es una función del tiempo y del capital. 
 
 $$ i = f(t,k) = (1+r) * j$$
-$$ i = (1+k/10^5)( -12.0567 e ^ { -0.127368 t } + 17.6149) $$
+$$ i = (1+k/10^5)( 2.62023 e ^ { 0.139728 t } + 3.98684) $$
 
 ### Niveles de tasas de interés 
 
-A continuación se presentan los niveles de tasas en relación la duración (delta, en meses) deseada y al monto solicitado (k). Las tasas de interés de este documento son anuales de capitalización mensual. 
+A continuación se presentan los niveles de tasas en relación la duración (delta, en meses) deseada y a la clasificación del capital solicitado (k). 
+
+Las tasas de interés de este documento son anuales de capitalización mensual. 
 
 
-d
-
-d
-
-d
-
-d
-
-d
-
-d
-
-d
-
-d
-
-d
+\pagebreak
 
 ```{r tables, echo=FALSE, message=FALSE}
 
@@ -253,9 +175,11 @@ knitr::kable(filter(table, plazo == 12)[-3][-4][-4])
 
 ```
 
-## Visual representation 
+\pagebreak
 
-The following... 
+## Representación Visual
+
+El nivel de tasas de interés se comporta con crecimiento exponencial en el tiempo (duración del crédito) y cambio en amplitud y desplazamiento vertical en función del capital solicitado. 
 
 ```{r plot, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -267,7 +191,7 @@ colScale <- scale_colour_manual(name = "lim_sup",values = myColors)
 
 ggplot(table, aes(x=plazo, y=i,colour=factor(lim_sup))) + theme_light() +
   geom_point() +
-  geom_smooth(se=F,method="lm",formula=y~x*log(x)) +
+  geom_smooth(se=T,method="lm",formula=y~x*log(x), size = 0.5, alpha = 0.2) +
   xlab("Duartion of loan") + ylab("Annual interest rate with monthly cap.") +
   ggtitle("Interest rate per captial requested and time") + colScale
 
