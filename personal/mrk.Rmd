@@ -1,0 +1,276 @@
+---
+title: "Credit modelling"
+author: "Rodrigo Hernández Mota"
+header-includes:
+   - \usepackage{bbm}
+   - \usepackage{amsmath}
+date: "12 de septiembre de 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introducción
+
+En el presente documento se publican las tasas de interés propuestas para otorgar / solicitar préstamos entre familiares y conocidos de confianza. 
+
+### Especificaciones
+
+Se deberá acordar el monto del préstamo, la tasa de interés y el plazo. Habiendo establecido estas variables, se recomienda fuertemente firmar un pagaré para dar formalidad al préstamo. Este pagaré, como todo título de crédito, se puede endosar según sea la conveniencia del beneficiaro. 
+
+Por simplicidad, se sugiere pagar el pagaré a su vencimiento. En caso de realizar un pago (o pagos) anteriores al fecha límite estipulada, se deberán descontar estos pagos al capital e intereses correspondientes siguendo las reglas de las Matemáticas Financieras. 
+
+```{r general_fuctions, echo=FALSE, warning=FALSE, results='hide', include=FALSE}
+
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+
+# Functions  --------------------------------------------------------------
+
+# Functions to calculate:
+# - future_value
+# - present_value
+# - interest_rate 
+
+future_value <- function(M, i, n){
+  # desc.
+  # This function returns the future value of an investment given the 
+  # annual interest rate, the initial capital and the # of months. 
+  # 
+  # I N P U T S:
+  # * M: initial capital
+  # * i: annual interest rate with monthly capitalization
+  # * n: number of months required
+  # 
+  # O U T P U T S:
+  # * FN: final/future value of capital M given the time and interest. 
+  
+  FN <- M * (1 + i/12) ^ n
+  
+  return(FN)
+}
+
+present_value <- function(FN, i, n){
+  # desc. 
+  # This function returns the present value of an investment given the
+  # annual interest rate, the final caputal and the # of months. 
+  # 
+  # I N P U T S:
+  # * FN: final/future expected value of capital M
+  # * i: annual interest rate with monthly capitalization
+  # * n: number of months required
+  # 
+  # O U T P U T S:
+  # * M: initial capital required to fullfil the... 
+  
+  M <- Fn * (1 + i/12) ^ (-n)
+  
+  return(M)
+}
+
+interest_rate <- function(M, FN, n){
+  # desc. 
+  # This function returns the annual interest rate with monthly
+  # capitalization of an investment of initial capital M in n months
+  # to return a final capital FN. 
+  # ...
+  
+  i <- (FN / M) ^ (1/n) - 1
+  i <- 12 * i
+  
+  return(i)
+}
+
+eq_intrate <- function(init, cap){
+  # desc. 
+  # This function returns the equivalent annual interest rate with monthly
+  # capitalization of a given initial annual interest rate with arbitrary
+  # capitalization. 
+  # 
+  # I N P U T S:
+  # * init = annual interest rate with arbitrary capitalization. 
+  # * cap = number of capitalizations per year (e.g. daily capitalization is cap = 360)
+  # 
+  # O U T P U T S:
+  
+  i <- 12 * ( (1 + init / cap) ^ (cap / 12) - 1 )
+  
+  return(i)
+}
+
+# Main program ------------------------------------------------------------
+
+main <- function(){
+  
+  intrate_min <- 0.07
+  mr    <- 2000 # monto de referencia
+  
+  table <- data_frame(lim_inf = numeric(), lim_sup = numeric(),
+                          plazo = numeric(), i = numeric())
+
+  for(k in c(2000,4000,6000,8000)){
+    for(j in c(1,2,3,4,6,9,12)){
+      #s <- 0.015 * ((j/3) - 1) # tasa por falta de disp. de tiempo; penalización horizontal
+      #i <- (-12.0567*exp(-0.127368*j) +17.6149) * (1 + k / 10^5)
+      i <- (2.62023*exp(0.139728*j) + 3.98684) * (1 + k / 10^5)
+      i <- ceiling(i * 10000) / 10000
+      if(i/100 < intrate_min){ i <- 100 * intrate_min }
+      lim_inf <- k - mr
+      table <- add_row(table, lim_inf = lim_inf, lim_sup = k, plazo = j, i = i)
+    }
+  }
+  
+  # add payment... 
+  f_ls <- apply(table,1,function(x) future_value(x[2], x[4]/100, x[3]))
+  inls <- f_ls - table$lim_sup
+  table <- add_column(table, f_ls = f_ls, inls = inls)
+  
+  # order 
+  table <- table[order(table$lim_sup),]
+  return(table)
+}
+
+table <- main()
+
+```
+
+## Requerimientos de capital
+
+[ agregar ]
+
+Para determinar la tasa de interés, es necesario conocer en qué _clasificación_ se encuentra el capital solicitado para préstamo;
+
+
+
+\[
+ \begin{matrix}
+  k_1 \in ( 0, 2000 ] \\
+  k_2 \in ( 2000, 4000 ] \\
+  k_3 \in ( 4000, 6000 ] \\
+  k_4 \in ( 6000, 8000 ]
+ \end{matrix}
+\]
+
+
+[ especificar ]
+
+## Tasas de interés
+
+### Inversionista racional 
+
+Los siguentes comportamientos pueden esperarse de un inversionista racional: 
+
+$\Delta i > 0 \to \Delta k > 0$
+Esto significa que dado un cambio positivo en la tasa de interés, in inversionista aumentará el monto $k$ que tiene en inversión. 
+
+$\Delta i > 0 \to \Delta t > 0$
+Un aumento en la tasa de interés genera un cambio proporcional en la duración de la inversión. 
+
+Dados estos comportamientos, se propone el siguiente modelo para determinar la tasa de interés:
+$$ i = j * (1 + r) $$
+
+En donde $i$ es la tasa de interés anual con capitalización mensual, $j$ es el componente temporal y $0<r<1$ es la magnitúd atemporal.
+
+### Componente temporal 
+En la sección anterior se comentó que la tasa de interés tiene una relación proporcional directa con el tiempo (duración) de la inversión. Por lo tanto, se propone el componente temporal de la siguiente forma:
+
+$$ j = a e ^ { b t } + c$$
+
+Condicionado a $j(1)=7$, $j(6)=12$, $j(12)=15$ en donde ${a,b,c} \in Re$. 
+
+Tomando en cuenta los valores y resolviendo se tiene como resultado:
+
+\[
+ \begin{matrix}
+  a = -12.0567 \\
+  b = -0.127368 \\
+  c = 17.6149 \\
+ \end{matrix}
+\]
+
+Reescribiendo en el componente temporal:
+
+$$ j = -12.0567 e ^ { -0.127368 t } + 17.6149 $$
+
+### Penalización de capital
+Por cada $1000 del capital solicitado, la tasa aumentará 1 punto base. 
+
+$$(1+r)=(1+k/10^5)$$
+
+En dónde $k$ es el capital. 
+
+### Tasa de interés
+
+Por lo tanto, la tasa de interés es una función del tiempo y del capital. 
+
+$$ i = f(t,k) = (1+r) * j$$
+$$ i = (1+k/10^5)( -12.0567 e ^ { -0.127368 t } + 17.6149) $$
+
+### Niveles de tasas de interés 
+
+A continuación se presentan los niveles de tasas en relación la duración (delta, en meses) deseada y al monto solicitado (k). Las tasas de interés de este documento son anuales de capitalización mensual. 
+
+
+d
+
+d
+
+d
+
+d
+
+d
+
+d
+
+d
+
+d
+
+d
+
+```{r tables, echo=FALSE, message=FALSE}
+
+cat("For delta =", 1)
+knitr::kable(filter(table, plazo == 1)[-3][-4][-4])
+
+cat("For delta =", 3)
+knitr::kable(filter(table, plazo == 3)[-3][-4][-4])
+
+cat("For delta =", 6)
+knitr::kable(filter(table, plazo == 6)[-3][-4][-4])
+
+cat("For delta =", 9)
+knitr::kable(filter(table, plazo == 9)[-3][-4][-4])
+
+cat("For delta =", 12)
+knitr::kable(filter(table, plazo == 12)[-3][-4][-4])
+
+
+```
+
+## Visual representation 
+
+The following... 
+
+```{r plot, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Create a custom color scale
+library(RColorBrewer)
+myColors <- brewer.pal(5,"Set1")
+names(myColors) <- levels(table$lim_sup)
+colScale <- scale_colour_manual(name = "lim_sup",values = myColors)
+
+ggplot(table, aes(x=plazo, y=i,colour=factor(lim_sup))) + theme_light() +
+  geom_point() +
+  geom_smooth(se=F,method="lm",formula=y~x*log(x)) +
+  xlab("Duartion of loan") + ylab("Annual interest rate with monthly cap.") +
+  ggtitle("Interest rate per captial requested and time") + colScale
+
+```
+
+
